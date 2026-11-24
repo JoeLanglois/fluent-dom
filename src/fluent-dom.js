@@ -40,6 +40,14 @@
  * @typedef {Object<string, unknown>} ElProps
  */
 
+/**
+ * A handler for one ref, as passed to refs(handlers): called with the
+ * ref's single-element wrapper as its first argument (and as `this`),
+ * and the ref name as its second argument.
+ * @typedef {(this: Wrapper, wrapper: Wrapper, name: string) => void} RefHandler
+ */
+/** @typedef {Object<string, RefHandler>} RefHandlers */
+
 /** @typedef {(event: Event) => void} DomHandler */
 /** @typedef {Object<string, DomHandler>} DomEventMap */
 /** @typedef {(...args: any[]) => void} EmitterHandler */
@@ -1011,9 +1019,32 @@ class Wrapper {
    * wrapped elements themselves and their descendants) and whose values
    * are single-element wrappers. If a ref name appears twice, the last
    * element in document order wins.
+   *
+   * With a handlers object, each handler is called with the wrapper for
+   * its ref name, so parts can be configured inline, and the refs object
+   * is still returned:
+   *
+   *   $form.refs({
+   *     label:  (l) => l.text('Click Me'),
+   *     submit: (b) => b.on('click', save),
+   *   })
+   *
+   * A handler for a ref that does not exist is still called, with an
+   * empty wrapper (whose setters no-op, like any empty wrapper). A
+   * handler value that is not a function throws a TypeError.
+   * @overload
    * @returns {Object<string, Wrapper>}
    */
-  refs() {
+  /**
+   * @overload
+   * @param {RefHandlers} handlers
+   * @returns {Object<string, Wrapper>}
+   */
+  /**
+   * @param {RefHandlers} [handlers]
+   * @returns {Object<string, Wrapper>}
+   */
+  refs(handlers) {
     /** @type {Object<string, Wrapper>} */
     const out = Object.create(null);
     for (const root of this._elements) {
@@ -1022,6 +1053,18 @@ class Wrapper {
       }
       for (const found of root.querySelectorAll("[ref]")) {
         out[found.getAttribute("ref") ?? ""] = new Wrapper([found]);
+      }
+    }
+    if (handlers !== undefined) {
+      if (!isPlainObject(handlers)) {
+        throw new TypeError("fluent-dom: refs() expects an object of ref handlers");
+      }
+      for (const [name, handler] of Object.entries(handlers)) {
+        if (typeof handler !== "function") {
+          throw new TypeError(`fluent-dom: refs() handler for "${name}" is not a function`);
+        }
+        const wrapper = out[name] ?? new Wrapper([]);
+        handler.call(wrapper, wrapper, name);
       }
     }
     return out;

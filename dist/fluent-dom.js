@@ -837,9 +837,32 @@ var FluentDom = (() => {
      * wrapped elements themselves and their descendants) and whose values
      * are single-element wrappers. If a ref name appears twice, the last
      * element in document order wins.
+     *
+     * With a handlers object, each handler is called with the wrapper for
+     * its ref name, so parts can be configured inline, and the refs object
+     * is still returned:
+     *
+     *   $form.refs({
+     *     label:  (l) => l.text('Click Me'),
+     *     submit: (b) => b.on('click', save),
+     *   })
+     *
+     * A handler for a ref that does not exist is still called, with an
+     * empty wrapper (whose setters no-op, like any empty wrapper). A
+     * handler value that is not a function throws a TypeError.
+     * @overload
      * @returns {Object<string, Wrapper>}
      */
-    refs() {
+    /**
+     * @overload
+     * @param {RefHandlers} handlers
+     * @returns {Object<string, Wrapper>}
+     */
+    /**
+     * @param {RefHandlers} [handlers]
+     * @returns {Object<string, Wrapper>}
+     */
+    refs(handlers) {
       const out = /* @__PURE__ */ Object.create(null);
       for (const root of this._elements) {
         if (root.hasAttribute("ref")) {
@@ -847,6 +870,18 @@ var FluentDom = (() => {
         }
         for (const found of root.querySelectorAll("[ref]")) {
           out[found.getAttribute("ref") ?? ""] = new _Wrapper([found]);
+        }
+      }
+      if (handlers !== void 0) {
+        if (!isPlainObject(handlers)) {
+          throw new TypeError("fluent-dom: refs() expects an object of ref handlers");
+        }
+        for (const [name, handler] of Object.entries(handlers)) {
+          if (typeof handler !== "function") {
+            throw new TypeError(`fluent-dom: refs() handler for "${name}" is not a function`);
+          }
+          const wrapper = out[name] ?? new _Wrapper([]);
+          handler.call(wrapper, wrapper, name);
         }
       }
       return out;

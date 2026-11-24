@@ -328,6 +328,25 @@ refs.email.val()
 refs.submit.on('click', save).addClass('busy')
 ```
 
+`refs()` also accepts a handlers object. Each key is a ref name, each
+value a function that receives that ref's wrapper as its first argument
+(and as `this`), plus the ref name as its second argument, so a part can
+be configured inline at the moment you collect it. The refs object is
+still returned, so both styles compose:
+
+```js
+const refs = $form.refs({
+  label:  (l) => l.text('Click Me'),
+  email:  (e) => e.val(prefill).on('input', validate),
+  submit: (b) => b.on('click', save),
+})
+refs.email.el.focus()
+```
+
+A handler for a ref that does not exist is still called, with an empty
+wrapper, whose setters no-op like any empty wrapper. A handler value
+that is not a function throws a `TypeError`.
+
 Rules worth knowing:
 
 - A ref is set like any attribute: `ref="email"` in markup, or
@@ -998,6 +1017,8 @@ drawn in the wrong place; move the shared thing into a store.
 
 `refs()` → `{ [refName]: wrapper }`, snapshot, self + descendants,
 single-element wrappers, last duplicate wins.
+`refs({ [refName]: (wrapper, name) => void })` → same object, after
+calling each handler with its ref's wrapper (empty wrapper if missing).
 
 ### Events (plain objects)
 

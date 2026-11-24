@@ -15,6 +15,15 @@ export type Content = string | number | Node | Wrapper | Array<any> | null | fal
 export type ElProps = {
     [x: string]: unknown;
 };
+/**
+ * A handler for one ref, as passed to refs(handlers): called with the
+ * ref's single-element wrapper as its first argument (and as `this`),
+ * and the ref name as its second argument.
+ */
+export type RefHandler = (this: Wrapper, wrapper: Wrapper, name: string) => void;
+export type RefHandlers = {
+    [x: string]: RefHandler;
+};
 export type DomHandler = (event: Event) => void;
 export type DomEventMap = {
     [x: string]: DomHandler;
@@ -454,9 +463,31 @@ export class Wrapper {
      * wrapped elements themselves and their descendants) and whose values
      * are single-element wrappers. If a ref name appears twice, the last
      * element in document order wins.
+     *
+     * With a handlers object, each handler is called with the wrapper for
+     * its ref name, so parts can be configured inline, and the refs object
+     * is still returned:
+     *
+     *   $form.refs({
+     *     label:  (l) => l.text('Click Me'),
+     *     submit: (b) => b.on('click', save),
+     *   })
+     *
+     * A handler for a ref that does not exist is still called, with an
+     * empty wrapper (whose setters no-op, like any empty wrapper). A
+     * handler value that is not a function throws a TypeError.
+     * @overload
      * @returns {Object<string, Wrapper>}
      */
     refs(): {
+        [x: string]: Wrapper;
+    };
+    /**
+     * @overload
+     * @param {RefHandlers} handlers
+     * @returns {Object<string, Wrapper>}
+     */
+    refs(handlers: RefHandlers): {
         [x: string]: Wrapper;
     };
     /** @returns {Iterator<Element>} */

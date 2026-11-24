@@ -73,7 +73,7 @@ Flavours in `dist/`:
 
 ```sh
 npm install
-npm test        # node:test + jsdom, 33 tests
+npm test        # node:test + jsdom, 36 tests
 npm run types   # tsc checkJs on the source + generate dist/fluent-dom.d.ts
 npm run build   # esbuild bundles into dist/, prints raw/gzip/brotli sizes
 ```

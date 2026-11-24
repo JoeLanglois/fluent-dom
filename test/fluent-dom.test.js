@@ -397,6 +397,44 @@ test("refs: self ref, $.el ref prop, last duplicate wins, snapshot", () => {
   assert.equal(Object.getPrototypeOf(refs), null);
 });
 
+test("refs(handlers): each handler receives its ref's wrapper to mutate directly", () => {
+  const $root = $.el("div").html(`
+    <span ref="label">old</span>
+    <button ref="submit" type="submit">Go</button>
+  `);
+  let clicks = 0;
+  const refs = $root.refs({
+    label: (l) => l.text("Click Me"),
+    submit: (b) => b.on("click", () => { clicks++; }).addClass("primary"),
+  });
+  assert.equal($root.find("[ref=label]").text(), "Click Me");
+  assert.equal(refs.label.text(), "Click Me"); // the refs object is still returned
+  assert.equal(refs.submit.hasClass("primary"), true);
+  refs.submit.el.click();
+  assert.equal(clicks, 1);
+});
+
+test("refs(handlers): handler gets the name as second argument, this is the wrapper", () => {
+  const $root = $.el("div").html(`<span ref="a">1</span><span ref="b">2</span>`);
+  const seen = [];
+  $root.refs({
+    a: function (w, name) { seen.push([name, w.text(), this === w]); },
+    b: function (w, name) { seen.push([name, w.text(), this === w]); },
+  });
+  assert.deepEqual(seen, [["a", "1", true], ["b", "2", true]]);
+});
+
+test("refs(handlers): missing ref gets an empty wrapper; non-function throws", () => {
+  const $root = $.el("div").html(`<span ref="x">1</span>`);
+  let got = null;
+  $root.refs({ nope: (w) => { got = w; w.text("ignored"); } });
+  assert.ok(got instanceof Wrapper);
+  assert.equal(got.length, 0);
+  assert.equal($root.find("[ref=x]").text(), "1"); // untouched
+  assert.throws(() => $root.refs({ x: "not a function" }), TypeError);
+  assert.throws(() => $root.refs("nope"), TypeError);
+});
+
 // -- $.events --------------------------------------------------------------------------------------
 
 test("$.events augments in place; on/emit pass args and bind this", () => {
